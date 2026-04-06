@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import { Todo } from "@/public/types/todo";
 import { dummyData } from "@/public/data/todos";
 
-
 export default function useTodos() {
 const [todos, setTodos] = useState(() => {
     const savedTodos: Todo[] = JSON.parse(localStorage.getItem("todos") || "[]");
