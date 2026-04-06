@@ -1,18 +1,39 @@
-'use client';
-
 import { useState, useEffect } from "react";
 import { Todo } from "@/public/types/todo";
 import { dummyData } from "@/public/data/todos";
 
 export default function useTodos() {
-const [todos, setTodos] = useState(() => {
-    const savedTodos: Todo[] = JSON.parse(localStorage.getItem("todos") || "[]");
-    return savedTodos.length > 0 ? savedTodos : dummyData;
+  const [todos, setTodos] = useState<Todo[]>(() => {
+    if (typeof window !== "undefined") {
+      const saved = window.localStorage.getItem("todos");
+      if (saved) {
+        try {
+          return JSON.parse(saved);
+        } catch (e) {
+          console.error("Failed to parse todos from localStorage", e);
+        }
+      }
+    }
+    return dummyData;
   });
 
+  const [isMounted, setIsMounted] = useState(false);
+
   useEffect(() => {
-    localStorage.setItem("todos", JSON.stringify(todos));
-  }, [todos]);
+    // We use a short timeout so that the setState is not triggered synchronously 
+    // within the effect body. This avoids cascading renders, satisfies the React 
+    // performance recommendations, and prevents hydration mismatches.
+    const timer = setTimeout(() => {
+      setIsMounted(true);
+    }, 0);
+    return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    if (isMounted) {
+      localStorage.setItem("todos", JSON.stringify(todos));
+    }
+  }, [todos, isMounted]);
 
   function handleCompletedChange(id: number, completed: boolean) {
     setTodos((prevTodos) =>
@@ -42,7 +63,8 @@ const [todos, setTodos] = useState(() => {
   }
 
   return {
-    todos,
+    // Return dummyData until mounted on the client to avoid SSR hydration mismatches
+    todos: isMounted ? todos : dummyData,
     handleAddTodo,
     handleCompletedChange,
     handleDeleteTodo,
